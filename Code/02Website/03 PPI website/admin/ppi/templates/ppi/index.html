@@ -1,0 +1,198 @@
+{% extends "ppi/base.html" %}
+
+{% load crispy_forms_tags %}
+
+{% block content %}
+
+
+
+
+
+
+
+
+
+<!-- Network Style -->
+<style>
+
+.asteriskField {
+    display: none;
+}
+
+.links line {
+  stroke: #999;
+  stroke-opacity: 0.6;
+}
+
+.nodes circle {
+  stroke: #fff;
+  stroke-width: 0.5px;
+}
+
+text {
+  font-family: sans-serif;
+  font-size: 15px;
+}
+
+
+
+
+</style>
+
+
+<form action="{% url 'index' %}" method="post">
+    {% csrf_token %}
+    {{ form|crispy }}  
+  <input type="submit" value="Search" class="btn btn-primary">
+</form>
+</br>
+<p>{{ message }}</p>
+
+<div class="text-center">
+<svg width="400" height="400"  class="center-block"></svg>
+</div>
+
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script src="nodes2.js"></script>
+
+
+
+<script>
+
+var svg = d3.select("svg"),
+    width = +svg.attr("width"),
+    height = +svg.attr("height");
+
+var color = d3.scaleOrdinal(d3.schemeCategory20);
+
+var simulation = d3.forceSimulation()
+    .force("link", d3.forceLink().id(function(d) { return d.id; }).distance(function (d) { return 100; }))
+    .force("charge", d3.forceManyBody())
+    .force("center", d3.forceCenter(width / 2, height / 2));
+
+
+
+data = {
+    "nodes":[       
+        {% for n in data.nodes %}
+                {"id": "{{ n.id }}", "group":{{ n.group }}, "url": "{{ n.url }}"}, 
+        {% endfor %}
+    ],
+    "links": [
+        {% for l in data.links %}
+                {"source": "{{ l.source }}", "target":"{{ l.target }}", "value": 5,}, 
+        {% endfor %}
+    ]
+}
+
+
+
+/*
+data = {
+  "nodes": [
+    {"id": "proteinAA", "group": 1,"url":"https://www.google.com"},
+    {"id": "proteinAB", "group": 1,"url":"https://www.google.com"},
+    {"id": "proteinAC", "group": 1,"url":"https://www.google.com"},
+    {"id": "proteinBA", "group": 2,"url":"https://www.wikipedia.org"},
+    {"id": "proteinBB", "group": 2,"url":"https://www.wikipedia.org"},
+    {"id": "proteinBC", "group": 2,"url":"https://www.wikipedia.org"},
+    
+  ],
+  "links": [
+    {"source": "proteinAA", "target": "proteinAB", "value": 5},
+    {"source": "proteinAA", "target": "proteinAC", "value": 5},
+    
+    {"source": "proteinAA", "target": "proteinBA", "value": 5},
+
+    {"source": "proteinBA", "target": "proteinBB", "value": 5},
+    {"source": "proteinBA", "target": "proteinBC", "value": 5},
+  ]
+}
+*/
+
+
+console.log(data.nodes)
+
+
+graph(data)
+
+function graph(graph) {
+ 
+
+  var link = svg.append("g")
+      .attr("class", "links")
+    .selectAll("line")
+    .data(graph.links)
+    .enter().append("line")
+      .attr("stroke-width", function(d) { return Math.sqrt(d.value); });
+
+  var node = svg.append("g")
+      .attr("class", "nodes")
+    .selectAll("g")
+    .data(graph.nodes)
+    .enter().append("g")
+    
+  var circles = node.append("circle")
+      .attr("r", 5)
+      .attr("fill", function(d) { return color(d.group); })
+      .call(d3.drag()
+          .on("start", dragstarted)
+          .on("drag", dragged)
+          .on("end", dragended))
+          .on("click", function click (d){window.open(d.url, "_tab");}
+);
+
+  var lables = node.append("text")
+      .text(function(d) {
+        return d.id;
+      })
+      .attr('x', 6)
+      .attr('y', 3);
+
+  node.append("title")
+      .text(function(d) { return d.id; });
+
+  simulation
+      .nodes(graph.nodes)
+      .on("tick", ticked);
+
+  simulation.force("link")
+      .links(graph.links);
+
+  function ticked() {
+    link
+        .attr("x1", function(d) { return d.source.x; })
+        .attr("y1", function(d) { return d.source.y; })
+        .attr("x2", function(d) { return d.target.x; })
+        .attr("y2", function(d) { return d.target.y; });
+
+    node
+        .attr("transform", function(d) {
+          return "translate(" + d.x + "," + d.y + ")";
+        })
+  }
+};
+
+function dragstarted(d) {
+  if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+  d.fx = d.x;
+  d.fy = d.y;
+}
+
+function dragged(d) {
+  d.fx = d3.event.x;
+  d.fy = d3.event.y;
+}
+
+function dragended(d) {
+  if (!d3.event.active) simulation.alphaTarget(0);
+  d.fx = null;
+  d.fy = null;
+}
+
+</script>
+
+
+
+
+{% endblock content %}
